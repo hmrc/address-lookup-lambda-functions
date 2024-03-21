@@ -1,9 +1,11 @@
+import Retriever.Use
 import com.amazonaws.services.lambda.runtime.LambdaLogger
 import org.openqa.selenium.{By, WebElement}
 import org.openqa.selenium.support.ui.{ExpectedConditions, WebDriverWait}
 
+import java.io.InputStream
 import java.time.Duration
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success, Try, Using}
 
 class Retriever(
                  driver: ExtendedHtmlUnitDriver,
@@ -13,12 +15,14 @@ class Retriever(
                  val outputFileName: String
                ) {
 
-  def retrieve(): Array[Byte] = {
-    driver.get(baseUrl)
+  def retrieve(): Use = {
+    Using {
+      driver.get(baseUrl)
 
-    waitForElementToBeClickable(By.partialLinkText(linkText), s"Could not find link with text '$linkText'.").click()
+      waitForElementToBeClickable(By.partialLinkText(linkText), s"Could not find link with text '$linkText'.").click()
 
-    org.apache.commons.io.IOUtils.toByteArray(driver.getPage.getWebResponse.getContentAsStream)
+      driver.getPage.getWebResponse.getContentAsStream
+    }(_)
   }
 
   private def waitForElementToBeClickable(by: By, errorMessage: String): WebElement = {
@@ -30,4 +34,8 @@ class Retriever(
         throw exception
     }
   }
+}
+
+object Retriever {
+  type Use = (InputStream => Unit) => Try[Unit]
 }
